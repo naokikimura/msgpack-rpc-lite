@@ -116,16 +116,16 @@ exports.createClient = function createClient(port, host, timeout, codecOptions) 
     return new Client(port, host, timeout, codecOptions);
 };
 
-exports.createServer = function createServer(options, connectionListener, codecOptions = { encode: {}, decode: {} }) {
+exports.createServer = function createServer(options, codecOptions = { encode: {}, decode: {} }) {
     const encodeCodec = msgpack.createCodec((codecOptions || {}).encode);
     const decodeCodec = msgpack.createCodec((codecOptions || {}).decode);
-    const server = net.createServer(options, connectionListener);
-    server.on('connection', function onConnection(socket) {
+    const connectionListener = function onConnection(socket) {
+        const self = this;
         socket.pipe(msgpack.createDecodeStream({ codec: decodeCodec })).on('data', message => {
             debug(message);
             if (message[0] === 0) {
                 const [ , msgid, method, params ] = message; // Request message
-                server.emit(method, params, (error, result) => {
+                self.emit(method, params, (error, result) => {
                     const encodeStream = msgpack.createEncodeStream({ codec: encodeCodec });
                     encodeStream.pipe(socket);
                     encodeStream.write([ 1, msgid, error, [].concat(result) ]); // Response message
@@ -133,9 +133,9 @@ exports.createServer = function createServer(options, connectionListener, codecO
                 });
             } else {
                 const [ , method, params ] = message; // Notification message
-                server.emit(method, params);
+                self.emit(method, params);
             }
         });
-    });
-    return server;
+    };
+    return net.createServer(options, connectionListener);
 };
