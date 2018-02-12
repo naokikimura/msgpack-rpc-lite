@@ -3,7 +3,7 @@ const portfinder = require('portfinder');
 const debug = require('debug')('msgpack-rpc-lite:test');
 const rpc = require('../');
 
-describe('msgpack-rpc', () => {
+describe('msgpack-rpc#request', () => {
 
     const option = { port: Number(process.env.npm_package_config_test_port || 9199) };
     let server;
@@ -17,7 +17,7 @@ describe('msgpack-rpc', () => {
         done();
     });
 
-    it('msgpack-rpc#call', done => {
+    it('call', done => {
         portfinder.getPortPromise(option).then(port => {
             debug({ port });
 
@@ -35,7 +35,45 @@ describe('msgpack-rpc', () => {
         }).catch(done);
     });
 
-    it('msgpack-rpc#notify', done => {
+    it('should be empty when call without arguments', done => {
+        portfinder.getPortPromise(option).then(port => {
+            debug({ port });
+
+            server = rpc.createServer().on('foo', (params, callback) => {
+                expect(params).to.be.a('array').and.to.have.property('length', 0);
+                callback(null, params.length);
+            });
+            server.listen(port);
+
+            client = rpc.createClient(port);
+            return new Promise((resolve, reject) => {
+                client.request('foo', (error, response, msgid) => {
+                    if (error) { reject(error); } else { resolve([ response, msgid ]); }
+                });
+            });
+        }).then(([ response ]) => {
+            expect(response).to.have.ordered.members([ 0 ]);
+            done();
+        }).catch(done);
+    });
+
+});
+
+describe('msgpack-rpc#notify', () => {
+
+    const option = { port: Number(process.env.npm_package_config_test_port || 9199) };
+    let server;
+    let client;
+
+    afterEach(done => {
+        client && client.close();
+        client = null;
+        server && server.close();
+        server = null;
+        done();
+    });
+
+    it('notify', done => {
         portfinder.getPortPromise(option).then(port => {
             debug({ port });
 

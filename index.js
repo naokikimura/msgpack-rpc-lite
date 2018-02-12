@@ -89,7 +89,7 @@ function Client(port, host = 'localhost', timeout = 0, codecOptions = { encode: 
 }
 
 function _call(type, method, ...args) {
-    const callback = typeof args.slice(-1) === 'function' && args.pop();
+    const callback = typeof args[args.length - 1] === 'function' && args.pop();
     const params = args;
     const message = [ type ].concat(type === 0 ? msgidGenerator.next() : [], method, [ params ] );
     if (callback) {
