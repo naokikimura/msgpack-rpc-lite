@@ -9,22 +9,48 @@ Implementation of MessagePack-RPC with msgpack-lite
 
 ## Usage ##
 
-- __createServer([serverOptions][, codecOptions])__
+- __createServer([*serverOptions*][, *codecOptions*])__
 
     Creates a new MessagePack-RPC server.
 
     - `serverOptions` &lt;Object> See [net.createServer([options][, connectionListener])](https://nodejs.org/api/net.html#net_net_createserver_options_connectionlistener)
     - `codecOptions` &lt;Object>
+        - `encode` See [Custom Codec Options][1]
+        - `decode` See [Custom Codec Options][1]
     - Returns: &lt;net.Server>
 
-- __createClient([port][, host][, timeout][, codecOptions])__
+- __Server event: *method*__
+
+    Emitted when a new connection is made.
+
+    - &lt;Array> request parameters.
+    - &lt;Function> If a request is received, a callback function is passed.
+        - To return the results to the client, pass `null` as the first argument and response parameters as the second argument.
+        - If an error occurs, pass it to the first argument.
+
+- __createClient(*port*[, *host*][, *timeout*][, *codecOptions*])__
 
     Initiates a MessagePack-RPC client.
 
     - `port` &lt;number> Port the socket should connect to.
     - `host` &lt;string> Host the socket should connect to. Default: `'localhost'`
     - `timeout` &lt;number> Sets the socket to timeout after timeout milliseconds of inactivity on the socket. If timeout is 0, then the existing idle timeout is disabled. Default: `0`
-    - `codecOptions`
+    - `codecOptions` &lt;Object>
+        - `encode` See [Custom Codec Options][1]
+        - `decode` See [Custom Codec Options][1]
+    - Return: &lt;Client>
+
+- __client.request(*method*[, *...args*])__
+
+    - `method` &lt;string>
+    - Return: &lt;Promise>
+
+- __client.notify(*method*[, *...args*])__
+
+    - `method` &lt;string>
+    - Return: &lt;Promise>
+
+[1]: https://github.com/kawanet/msgpack-lite#custom-codec-options
 
 ## Examples ##
 
@@ -50,12 +76,7 @@ Implementation of MessagePack-RPC with msgpack-lite
 
 ## Compatibility Mode ##
 
-- Server
-    ```js
-    const codecOptions = { encode: { useraw: true }, decode: { useraw: true } };
-
-    const server = rpc.createServer({}, codecOptions);
-    ```
+Set `true` to `useraw` of `encode`/`decode` of Codec-options.
 
 - Client
     ```js
@@ -63,6 +84,10 @@ Implementation of MessagePack-RPC with msgpack-lite
 
     const client = rpc.createClient(9199, 'localhost', 0, codecOptions);
     ```
+
+See also:
+- https://github.com/kawanet/msgpack-lite#compatibility-mode
+- https://github.com/msgpack/msgpack/blob/master/spec.md#upgrading-messagepack-specification
 
 ## See also ##
 
