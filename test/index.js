@@ -21,14 +21,14 @@ describe('msgpack-rpc', () => {
         portfinder.getPortPromise(option).then(port => {
             debug({ port });
 
-            server = rpc.createServer().on('foo', (params, callback) => {
+            server = rpc.createServer().on('foo', (params, done) => {
                 expect(params).to.have.ordered.members([ 1, 2, 3 ]);
-                callback(null, 'bar');
+                done(null, 'bar');
             });
             server.listen(port);
 
             client = rpc.createClient(port);
-            return client.request('foo', [ 1, 2, 3]);
+            return client.request('foo', 1, 2, 3);
         }).then(([ response ]) => {
             expect(response).to.have.ordered.members([ 'bar' ]);
             done();
@@ -46,7 +46,7 @@ describe('msgpack-rpc', () => {
             server.listen(port);
 
             client = rpc.createClient(port);
-            client.notify('qux', [ 1, 2, 3]);
+            client.notify('qux', 1, 2, 3);
         }).catch(done);
     });
 

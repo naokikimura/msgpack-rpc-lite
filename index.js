@@ -25,8 +25,12 @@ const msgidGenerator = (function () {
     return { next() { return (msgid = (msgid < MAX ? msgid + 1 : 0)); } };
 }());
 
-function Client(port = 9199, host = 'localhost', timeout = 0, codecOptions = { encode: {}, decode: {} }) {
+function Client(port, host = 'localhost', timeout = 0, codecOptions = { encode: {}, decode: {} }) {
     events.EventEmitter.call(this);
+
+    assert.equal(typeof port, 'number', 'Illegal argument: port');
+    assert.equal(typeof host, 'string', 'Illegal argument: host');
+    assert.equal(typeof timeout, 'number', 'Illegal argument: timeout');
 
     const self = this;
     const socketEvents = [ 'connect', 'end', 'timeout', 'drain', 'error', 'close' ];
@@ -84,8 +88,10 @@ function Client(port = 9199, host = 'localhost', timeout = 0, codecOptions = { e
     });
 }
 
-function _call(type, method, params, callback) {
-    const message = [ type ].concat(type === 0 ? msgidGenerator.next() : [], [ method, [].concat(params) ] );
+function _call(type, method, ...args) {
+    const callback = typeof args.slice(-1) === 'function' && args.pop();
+    const params = args;
+    const message = [ type ].concat(type === 0 ? msgidGenerator.next() : [], method, [ params ] );
     if (callback) {
         this.send(message, callback);
     } else {
@@ -97,12 +103,12 @@ function _call(type, method, params, callback) {
     }
 }
 
-function request(method, params, callback) {
-    return _call.call(this, 0, method, params, callback);
+function request(method, ...args) {
+    return _call.apply(this, [ 0, method ].concat(args));
 }
 
-function notify(method, params, callback) {
-    return _call.call(this, 2, method, params, callback);
+function notify(method, ...args) {
+    return _call.apply(this, [ 2, method ].concat(args));
 }
 
 Client.prototype.request = request;
