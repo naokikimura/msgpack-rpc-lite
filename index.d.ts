@@ -18,7 +18,7 @@ export interface Client {
    * @param args 
    * @returns {Promise<[ any, number ]>}
    */
-  request(method: string, ...args): Promise<[ any, number ]>;
+  request(method: string, ...args: any[]): Promise<[ any, number ]>;
 
   /**
    * Send a request message to the server
@@ -28,7 +28,7 @@ export interface Client {
    * @param args 
    * @returns {Promise<[ any, number ]>}
    */
-  call(method: string, ...args): Promise<[ any, number ]>;
+  call(method: string, ...args: any[]): Promise<[ any, number ]>;
 
   /**
    * Send a notification message to the server
@@ -37,7 +37,7 @@ export interface Client {
    * @param args 
    * @returns {Promise<[ any, number ]>}
    */
-  notify(method: string, ...args): Promise<[ any, number ]>;
+  notify(method: string, ...args: any[]): Promise<[ any, number ]>;
 
   readonly encodeCodec: msgpack.Codec;
   readonly decodeCodec: msgpack.Codec;
@@ -46,7 +46,7 @@ export interface Client {
   /**
    * @deprecated This method does nothing. It is left for compatibility with v0.0.2 or earlier.
   */
-  readonly close(): void;
+  close(): void;
 }
 
 export interface ClientConstructor {
