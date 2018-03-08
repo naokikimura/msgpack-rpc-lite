@@ -1,4 +1,5 @@
 import * as net from "net";
+import * as events from 'events';
 import * as msgpack from "msgpack-lite";
 
 interface CodecOptions {
@@ -9,7 +10,7 @@ interface CodecOptions {
 /**
  * MessagePack-RPC client
 */
-export interface Client {
+export interface Client extends events.EventEmitter {
 
   /**
    * Send a request message to the server
