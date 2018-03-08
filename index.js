@@ -16,7 +16,9 @@ const msgpack = require('msgpack-lite'),
     util = require('util');
 
 const debug = util.debuglog('msgpack-rpc-lite');
-const enabled = debug.toString() !== (function () {}).toString();
+const tr = (object) => object.toString().replace(/\s/g, '');
+const isDoNothingFunction = (fn) => tr(fn) === tr(function () { });
+const enabled = !isDoNothingFunction(debug);
 Object.defineProperty(debug, 'enabled', { get() { return enabled; } });
 
 const msgidGenerator = (function () {
@@ -49,33 +51,30 @@ function Client(connectOptions, codecOptions) {
     });
 }
 
-function send(message, callback = function () {}) {
+function send(message, callback = function () { }) {
     const self = this;
     const socket = net.createConnection(this.connectOptions, () => {
         const encodeStream = msgpack.createEncodeStream({ codec: this.encodeCodec });
         encodeStream.pipe(socket);
-        encodeStream.write(message, (...args) => {
-            if (debug.enabled) { debug(`sent message: ${ util.inspect(message, false, null, true) }`); }
+        encodeStream.end(message, (...args) => {
+            if (debug.enabled) { debug(`sent message: ${util.inspect(message, false, null, true)}`); }
             if (message[0] === 2) { callback.apply(self, args); }
         });
-        encodeStream.end();
+        socket.end();
     });
     debug({ socket });
 
-    const socketEvents = [ 'connect', 'end', 'timeout', 'drain', 'error', 'close' ];
-    socketEvents.forEach(eventName => {
-        socket.on(eventName, (...args) => {
-            debug(`socket event [${ eventName }]`);
-            self.emit.apply(self, [eventName].concat(args));
-        });
-    });
+    const socketEvents = ['connect', 'end', 'timeout', 'drain', 'error', 'close'];
+    socketEvents.reduce((socket, eventName) => socket.on(eventName, (...args) => {
+        debug(`socket event [${eventName}]`);
+        self.emit.apply(self, [eventName].concat(args));
+    }), socket);
 
     if (message[0] === 0) {
-        socket.pipe(msgpack.createDecodeStream({ codec: this.decodeCodec })).on('data', message => {
-            if (debug.enabled) { debug(`received message: ${ util.inspect(message, false, null, true) }`); }
+        socket.pipe(msgpack.createDecodeStream({ codec: this.decodeCodec })).once('data', message => {
+            if (debug.enabled) { debug(`received message: ${util.inspect(message, false, null, true)}`); }
 
-            socket.end();
-            const [ type, msgid, error, result ] = message; // Response message
+            const [type, msgid, error, result] = message; // Response message
             assert.equal(type, 1);
             assert.equal(msgid, message[1]);
             callback.call(self, error, result, msgid);
@@ -85,8 +84,7 @@ function send(message, callback = function () {}) {
 
 function call(type, method, ...args) {
     const callback = typeof args[args.length - 1] === 'function' && args.pop();
-    const params = args;
-    const message = [ type ].concat(type === 0 ? msgidGenerator.next() : [], method, [ params ] );
+    const message = [type].concat(type === 0 ? msgidGenerator.next() : [], method, [args]);
     if (callback) {
         send.call(this, message, callback);
     } else {
@@ -99,11 +97,11 @@ function call(type, method, ...args) {
 }
 
 function request(method, ...args) {
-    return call.apply(this, [ 0, method ].concat(args));
+    return call.apply(this, [0, method].concat(args));
 }
 
 function notify(method, ...args) {
-    return call.apply(this, [ 2, method ].concat(args));
+    return call.apply(this, [2, method].concat(args));
 }
 
 Client.prototype.request = request;
@@ -131,15 +129,15 @@ exports.createServer = function createServer(options, codecOptions = { encode: {
         socket.pipe(msgpack.createDecodeStream({ codec: decodeCodec })).on('data', message => {
             debug(message);
             if (message[0] === 0) {
-                const [ , msgid, method, params ] = message; // Request message
+                const [, msgid, method, params] = message; // Request message
                 self.emit(method, params, (error, result) => {
                     const encodeStream = msgpack.createEncodeStream({ codec: encodeCodec });
                     encodeStream.pipe(socket);
-                    encodeStream.write([ 1, msgid, error, [].concat(result) ]); // Response message
-                    encodeStream.end();                    
+                    encodeStream.write([1, msgid, error, [].concat(result)]); // Response message
+                    encodeStream.end();
                 });
             } else {
-                const [ , method, params ] = message; // Notification message
+                const [, method, params] = message; // Notification message
                 self.emit(method, params);
             }
         });
