@@ -4,7 +4,7 @@
   "description": "Implementation of MessagePack-RPC with msgpack-lite",
   "main": "./dist/index.js",
   "scripts": {
-    "test": "nyc -a -r lcovonly -r text mocha -R spec --recursive -r ts-node/register \"test/**/*.ts\" -r source-map-support/register",
+    "test": "nyc -a -e '.ts' -r lcovonly -r text mocha -R spec --recursive -r ts-node/register \"test/**/*.ts\" -r source-map-support/register",
     "prepare": "tsc"
   },
   "repository": {
@@ -27,6 +27,8 @@
     "msgpack-lite": "^0.1.26"
   },
   "devDependencies": {
+    "@types/chai": "^4.1.2",
+    "@types/mocha": "^2.2.48",
     "@types/msgpack-lite": "^0.1.6",
     "@types/node": "^9.4.7",
     "chai": "^4.1.2",
