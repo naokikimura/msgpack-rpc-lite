@@ -2,9 +2,10 @@
   "name": "msgpack-rpc-lite",
   "version": "0.0.6",
   "description": "Implementation of MessagePack-RPC with msgpack-lite",
-  "main": "index.js",
+  "main": "./dist/index.js",
   "scripts": {
-    "test": "istanbul cover ./node_modules/mocha/bin/_mocha"
+    "test": "nyc -a -r lcovonly -r text mocha -R spec --recursive -r ts-node/register \"test/**/*.ts\" -r source-map-support/register",
+    "prepare": "tsc"
   },
   "repository": {
     "type": "git",
@@ -26,12 +27,18 @@
     "msgpack-lite": "^0.1.26"
   },
   "devDependencies": {
+    "@types/msgpack-lite": "^0.1.6",
+    "@types/node": "^9.4.7",
     "chai": "^4.1.2",
     "codacy-coverage": "^2.0.3",
     "debug": "^3.1.0",
     "istanbul": "^0.4.5",
     "mocha": "^5.0.0",
     "mocha-lcov-reporter": "^1.3.0",
-    "portfinder": "^1.0.13"
+    "nyc": "^11.6.0",
+    "portfinder": "^1.0.13",
+    "source-map-support": "^0.5.4",
+    "ts-node": "^5.0.1",
+    "typescript": "^2.7.2"
   }
 }

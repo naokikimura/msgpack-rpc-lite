@@ -3,7 +3,7 @@ node_js:
 - lts/*
 - '6'
 script:
-- npm test -- --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/.bin/codacy-coverage
+- npm test && cat ./coverage/lcov.info | ./node_modules/.bin/codacy-coverage
 deploy:
   provider: npm
   email: n.kimura.cap@gmail.com
