@@ -8,6 +8,7 @@ script:
 - npm test && cat ./coverage/lcov.info | ./node_modules/.bin/codacy-coverage
 deploy:
   provider: npm
+  skip_cleanup: true
   email: n.kimura.cap@gmail.com
   api_key:
     secure: MBCetYp2O986h4hb619jyR5OwI0pktAl3pRJWk9gQnAMXNbJRvhccEuWmS9Wn0w48p18ejFpJqPE6pdosENaSIa9x6jN5kj2EIe1W5Pm7cr6Y6lJEKp/qQ1n7kCUtVdSL0xbgqSfr22sWSUQe+cH7PZAPaNLwrOpj83BwD43dvPDokZgB5gu7mZJM+XWyHThKXGLyu83/snQ+pbqrsuZ4A+ToaO6Cy51+7JGPuDi3QAiAbQ5+0/UrjCxVzg1qLPFE6Oio1AqzojvdIyvzozX2QaPQ5EZIBaO3CNAIrhbXRAPmBU5HepargjqRMmhoLLuyan5r7I5Ts8N0h1/Dv2c4U9+ow4fD0TT7cwuT6lJdqgpDqnu1WGozF/0g2F/y8M6rJHlLpSE4lJhfkhLazAz4Eg2O0mufz8wxm+YHDpilKAe6KoPZuiBAZGBO5VjGirZeC4R8wSQzABCLqikIY5koaYkOS8a/3L9J15bLObFiMkL7Bb3ZGXRCoGpWQFnvuiBj39e3BKxJ8FPzKqSrBf7wa4bgAqvJeEJfojJZ9KtNMKKCif+I7ydcR9+knIPk3ah90RPLG9SBbXnVabcyO8NdT2P56Y3iFHyimPY0FjWHJEsl4YauHjmVp1xHnWUpjxNRoA36dcFti/Do30ZEZ66SiBmfLbVG4s350AWWDBCdls=
