@@ -2,6 +2,8 @@ language: node_js
 node_js:
 - lts/*
 - '6'
+before_script:
+- if [ $(echo "$(npm -v 2>&1 | cut -d. -f-2) < 4.2" | bc) -eq 1 ]; then npm run prepare; fi
 script:
 - npm test && cat ./coverage/lcov.info | ./node_modules/.bin/codacy-coverage
 deploy:
