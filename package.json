@@ -1,6 +1,6 @@
 {
   "name": "msgpack-rpc-lite",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Implementation of MessagePack-RPC with msgpack-lite",
   "main": "./dist/index.js",
   "scripts": {
