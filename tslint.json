@@ -1,0 +1,29 @@
+{
+    "defaultSeverity": "error",
+    "extends": [
+        "tslint:recommended"
+    ],
+    "jsRules": {},
+    "rules": {
+        "arrow-parens": false,
+        "interface-name": false,
+        "max-line-length": [
+            true,
+            125
+        ],
+        "no-empty": false,
+        "no-unused-expression": [
+            true,
+            "allow-fast-null-checks"
+        ],
+        "quotemark": [
+            true,
+            "single"
+        ],
+        "space-before-function-paren": [
+            true,
+            "anonymous"
+        ]
+    },
+    "rulesDirectory": []
+}

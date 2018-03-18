@@ -1,8 +1,10 @@
-import net from 'net';
 import { expect } from 'chai';
+import debuglog from 'debug';
+import net from 'net';
 import portfinder from 'portfinder';
-const debug = require('debug')('msgpack-rpc-lite:test');
 import * as rpc from '../src/';
+
+const debug = debuglog('msgpack-rpc-lite:test');
 
 describe('msgpack-rpc#request', () => {
 
@@ -18,9 +20,9 @@ describe('msgpack-rpc#request', () => {
         portfinder.getPortPromise(options).then(port => {
             debug({ port });
 
-            server = rpc.createServer().on('foo', (params, done) => {
+            server = rpc.createServer().on('foo', (params, callback) => {
                 expect(params).to.have.ordered.members([1, 2, 3]);
-                done(null, 'bar');
+                callback(null, 'bar');
             });
             server.listen(port);
 
