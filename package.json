@@ -25,12 +25,12 @@
   },
   "homepage": "https://github.com/naokikimura/msgpack-rpc-lite#readme",
   "dependencies": {
+    "@types/msgpack-lite": "^0.1.6",
     "msgpack-lite": "^0.1.26"
   },
   "devDependencies": {
     "@types/chai": "^4.1.2",
     "@types/mocha": "^2.2.48",
-    "@types/msgpack-lite": "^0.1.6",
     "@types/node": "^9.4.7",
     "chai": "^4.1.2",
     "codacy-coverage": "^2.0.3",
