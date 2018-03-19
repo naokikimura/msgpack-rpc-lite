@@ -22,6 +22,7 @@ interface DebugLog extends Function {
 const debug = (util.debuglog('msgpack-rpc-lite') as DebugLog);
 const tr = (object: any) => object && object.toString().replace(/\s/g, '');
 const equalsIgnoreSpace = (a: any, b: any): boolean => tr(a) === tr(b);
+// tslint:disable-next-line:only-arrow-functions
 const isDoNothingFunction = (fn: DebugLog) => equalsIgnoreSpace(fn, function () { });
 const enabled = !isDoNothingFunction(debug);
 Object.defineProperty(debug, 'enabled', { get() { return enabled; } });
