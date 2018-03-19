@@ -27,7 +27,7 @@ const isDoNothingFunction = (fn: DebugLog) => equalsIgnoreSpace(fn, function () 
 const enabled = !isDoNothingFunction(debug);
 Object.defineProperty(debug, 'enabled', { get() { return enabled; } });
 
-interface CodecOptions {
+export interface CodecOptions {
     encode?: msgpack.CodecOptions;
     decode?: msgpack.CodecOptions;
 }
