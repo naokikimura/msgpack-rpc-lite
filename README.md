@@ -4,6 +4,7 @@
 [![Build Status](https://travis-ci.org/naokikimura/msgpack-rpc-lite.svg?branch=master)](https://travis-ci.org/naokikimura/msgpack-rpc-lite)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/85c5e44e31da475ebcaae8f1b79de7c8)](https://app.codacy.com/app/n.kimura.cap/msgpack-rpc-lite?utm_source=github.com&utm_medium=referral&utm_content=naokikimura/msgpack-rpc-lite&utm_campaign=badger)
 [![Codacy Badge](https://api.codacy.com/project/badge/Coverage/5a32022009694006ab61191e243e569f)](https://www.codacy.com/app/n.kimura.cap/msgpack-rpc-lite?utm_source=github.com&utm_medium=referral&utm_content=naokikimura/msgpack-rpc-lite&utm_campaign=Badge_Coverage)
+[![codecov](https://codecov.io/gh/naokikimura/msgpack-rpc-lite/branch/master/graph/badge.svg)](https://codecov.io/gh/naokikimura/msgpack-rpc-lite)
 [![Dependency Status](https://beta.gemnasium.com/badges/github.com/naokikimura/msgpack-rpc-lite.svg)](https://beta.gemnasium.com/projects/github.com/naokikimura/msgpack-rpc-lite)
 
 Implementation of MessagePack-RPC with msgpack-lite
