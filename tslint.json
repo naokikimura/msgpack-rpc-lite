@@ -5,13 +5,22 @@
     ],
     "jsRules": {},
     "rules": {
-        "arrow-parens": false,
-        "interface-name": false,
+        "arrow-parens": [
+            true,
+            "ban-single-arg-parens"
+        ],
+        "cyclomatic-complexity": [
+            true,
+            5
+        ],
+        "interface-name": [
+            true,
+            "never-prefix"
+        ],
         "max-line-length": [
             true,
             125
         ],
-        "no-empty": false,
         "no-unused-expression": [
             true,
             "allow-fast-null-checks"
