@@ -22,7 +22,7 @@ interface DebugLog extends Function {
 const debug = (util.debuglog('msgpack-rpc-lite') as DebugLog);
 const tr = (object: any) => object && object.toString().replace(/\s/g, '');
 const equalsIgnoreSpace = (a: any, b: any): boolean => tr(a) === tr(b);
-// tslint:disable-next-line:only-arrow-functions
+// tslint:disable-next-line:only-arrow-functions no-empty
 const isDoNothingFunction = (fn: DebugLog) => equalsIgnoreSpace(fn, function () { });
 const enabled = !isDoNothingFunction(debug);
 Object.defineProperty(debug, 'enabled', { get() { return enabled; } });
@@ -38,20 +38,36 @@ const msgidGenerator = (() => {
     return { next() { return (msgid = (msgid < MAX ? msgid + 1 : 0)); } };
 })();
 
+type Message = [number, number, string, any[]] | [number, string, any[]];
+type ResponseListener = (error: string, result: any, msgid: number) => void;
+type WriteFinishListener = () => void;
+type SendListener = ResponseListener | WriteFinishListener;
+const isFunction = (object: any) => typeof object === 'function';
+
+function createMessage(type: number, method: string, parameters: any[]): [Message, boolean | SendListener] {
+    const params = parameters.slice(0);
+    const callback = isFunction(params[params.length - 1]) && (params.pop() as SendListener);
+    const message = (([] as any[]).concat(type, type === 0 ? msgidGenerator.next() : [], method, [params]) as Message);
+    return [message, callback];
+}
+
+function parseMessage(message: Message): [number, number, string, any[]] {
+    const msg = message.slice(0);
+    const type = (msg.shift() as number);
+    const params = (msg.pop() as any[]);
+    const method = (msg.pop() as string);
+    const msgid = (msg.pop() as number);
+    return [type, msgid, method, params];
+}
+
 /**
  * MessagePack-RPC client
  */
 export class Client extends events.EventEmitter {
-    public connectOptions: net.NetConnectOpts;
-    public readonly encodeCodec: msgpack.Codec;
-    public readonly decodeCodec: msgpack.Codec;
-    constructor(connectOptions: net.NetConnectOpts, codecOptions: CodecOptions = {}) {
+    constructor(public connectOptions: net.NetConnectOpts, codecOptions: CodecOptions = {}) {
         super();
-        this.connectOptions = connectOptions;
         const encodeCodec = msgpack.createCodec((codecOptions || {}).encode);
         const decodeCodec = msgpack.createCodec((codecOptions || {}).decode);
-        this.encodeCodec = encodeCodec;
-        this.decodeCodec = decodeCodec;
         Object.defineProperties(this, {
             decodeCodec: {
                 get() { return decodeCodec; },
@@ -61,16 +77,26 @@ export class Client extends events.EventEmitter {
             },
         });
     }
+    get decodeCodec(): msgpack.Codec { return this.decodeCodec; }
+    get encodeCodec(): msgpack.Codec { return this.encodeCodec; }
 
     /**
      * Send a request message to the server
      *
      * @param method { string }
-     * @param args
-     * @returns {Promise<[any, number]>}
+     * @param parameters
      */
-    public request(method: string, ...args: any[]): Promise<[any, number]> {
-        return call.apply(this, [0, method].concat(args));
+    public request(method: string, ...parameters: any[]) {
+        const [message, callback] = createMessage(0, method, parameters);
+        if (callback) {
+            send.call(this, message, callback, undefined);
+        } else {
+            return new Promise<[any, number]>((resolve, reject) => {
+                const executor = (error: string, result: any, msgid: number) =>
+                    error ? reject(error) : resolve([result, msgid]);
+                send.call(this, message, executor, undefined);
+            });
+        }
     }
 
     /**
@@ -79,37 +105,42 @@ export class Client extends events.EventEmitter {
      * @deprecated Please use the request method. It is left for compatibility with v0.0.2 or earlier.
      * @param method { string }
      * @param args
-     * @returns {Promise<[any, number]>}
+     * @returns {Promise<[any, number]> | undefined}
      */
-    public call(method: string, ...args: any[]): Promise<[any, number]> {
-        return call.apply(this, [0, method].concat(args));
+    public call(method: string, ...args: any[]): Promise<[any, number]> | undefined {
+        return this.request.apply(this, [method, args]);
     }
 
     /**
      * Send a notification message to the server
      *
      * @param method { string }
-     * @param args
-     * @returns {Promise<any[]>}
+     * @param parameters
      */
-    public notify(method: string, ...args: any[]): Promise<any[]> {
-        return call.apply(this, [2, method].concat(args));
+    public notify(method: string, ...parameters: any[]) {
+        const [message, callback] = createMessage(2, method, parameters);
+        if (callback) {
+            send.call(this, message, undefined, callback);
+        } else {
+            return new Promise(resolve => send.call(this, message, undefined, () => resolve()));
+        }
     }
 
     /**
      * @deprecated This method does nothing. It is left for compatibility with v0.0.2 or earlier.
      */
+    // tslint:disable-next-line:no-empty
     public close(): void { }
 }
 
-function send(this: Client, message: any[], callback = () => { }) {
-    const self = this;
+// tslint:disable-next-line:no-empty max-line-length
+function send(this: Client, message: Message, responseListener: ResponseListener = () => { }, writeFinishListener: WriteFinishListener = () => { }) {
     const socket = net.createConnection(this.connectOptions, () => {
         const encodeStream = msgpack.createEncodeStream({ codec: this.encodeCodec });
         encodeStream.pipe(socket);
-        encodeStream.end(message, (...args: any[]) => {
+        encodeStream.end(message, () => {
             if (debug.enabled) { debug(`sent message: ${util.inspect(message, false, null, true)}`); }
-            if (message[0] === 2) { callback.apply(self, args); }
+            writeFinishListener();
         });
         socket.end();
     });
@@ -118,33 +149,17 @@ function send(this: Client, message: any[], callback = () => { }) {
     const socketEvents = ['connect', 'end', 'timeout', 'drain', 'error', 'close'];
     socketEvents.reduce((accumulator, eventName) => accumulator.on(eventName, (...args) => {
         debug(`socket event [${eventName}]`);
-        self.emit.apply(self, [eventName].concat(args));
+        this.emit.apply(this, [eventName].concat(args));
     }), socket);
 
-    if (message[0] === 0) {
-        socket.pipe(msgpack.createDecodeStream({ codec: this.decodeCodec })).once('data', response => {
-            if (debug.enabled) { debug(`received message: ${util.inspect(response, false, null, true)}`); }
+    socket.pipe(msgpack.createDecodeStream({ codec: this.decodeCodec })).on('data', response => {
+        if (debug.enabled) { debug(`received message: ${util.inspect(response, false, null, true)}`); }
 
-            const [type, msgid, error, result] = response; // Response message
-            assert.equal(type, 1);
-            assert.equal(msgid, response[1]);
-            callback.call(self, error, result, msgid);
-        });
-    }
-}
-
-function call(this: Client, type: number, method: string, ...params: any[]) {
-    const callback = typeof params[params.length - 1] === 'function' && params.pop();
-    const message = ([type] as any[]).concat(type === 0 ? msgidGenerator.next() : [], method, [params]);
-    if (callback) {
-        send.call(this, message, callback);
-    } else {
-        return new Promise((resolve, reject) => {
-            send.call(this, message, (error: string, ...args: any[]) => {
-                if (error) { reject(error); } else { resolve(args); }
-            });
-        });
-    }
+        const [type, msgid, error, result] = (response as any); // Response message
+        assert.equal(type, 1);
+        assert.equal(msgid, message[1]);
+        responseListener(error, result, msgid);
+    });
 }
 
 /**
@@ -159,7 +174,6 @@ function call(this: Client, type: number, method: string, ...params: any[]) {
  */
 export function createClient(port: number, host = 'localhost', timeout = 0, codecOptions: CodecOptions = {}): Client {
     debug({ port, host, timeout, codecOptions });
-
     assert.equal(typeof port, 'number', 'Illegal argument: port');
     assert.equal(typeof host, 'string', 'Illegal argument: host');
     assert.equal(typeof timeout, 'number', 'Illegal argument: timeout');
@@ -177,21 +191,15 @@ export function createServer(options?: { allowHalfOpen?: boolean, pauseOnConnect
     const encodeCodec = msgpack.createCodec((codecOptions || {}).encode);
     const decodeCodec = msgpack.createCodec((codecOptions || {}).decode);
     const connectionListener = function onConnection(this: net.Server, socket: net.Socket) {
-        const self = this;
-        socket.pipe(msgpack.createDecodeStream({ codec: decodeCodec })).on('data', (message: any[]) => {
+        socket.pipe(msgpack.createDecodeStream({ codec: decodeCodec })).on('data', (message: Message) => {
             debug(message);
-            if (message[0] === 0) {
-                const [, msgid, method, params] = message; // Request message
-                self.emit(method, params, (error: string, result: any) => {
-                    const encodeStream = msgpack.createEncodeStream({ codec: encodeCodec });
-                    encodeStream.pipe(socket);
-                    encodeStream.write([1, msgid, error, [].concat(result)]); // Response message
-                    encodeStream.end();
-                });
-            } else {
-                const [, method, params] = message; // Notification message
-                self.emit(method, params);
-            }
+            const [type, msgid, method, params] = parseMessage(message);
+            const callback = type === 2 ? undefined : (error: string, result: any) => {
+                const encodeStream = msgpack.createEncodeStream({ codec: encodeCodec });
+                encodeStream.pipe(socket);
+                encodeStream.end([1, msgid, error, [].concat(result)]); // Response message
+            };
+            this.emit(method, params, callback);
         });
     };
     return net.createServer(options, connectionListener);
