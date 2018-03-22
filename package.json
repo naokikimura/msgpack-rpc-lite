@@ -5,7 +5,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "test": "nyc -a -e '.ts' -n \"src/**\" -r lcovonly -r text mocha -R spec --recursive -r ts-node/register \"test/**/*.ts\" -r source-map-support/register",
+    "test": "nyc mocha",
     "prepare": "tsc"
   },
   "repository": {
