@@ -21,6 +21,9 @@
         "-r",
         "source-map-support/register"
       ],
+      "env": {
+        "NODE_DEBUG": "msgpack-rpc-lite"
+      },
       "internalConsoleOptions": "openOnSessionStart"
     }
   ]
