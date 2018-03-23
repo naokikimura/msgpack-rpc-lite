@@ -51,13 +51,13 @@ function createMessage(type: number, method: string, parameters: any[]): [Messag
     return [message, callback];
 }
 
-function parseMessage(message: Message): [number, number, string, any[]] {
+function parseMessage(message: Message) {
     const msg = message.slice(0);
     const type = (msg.shift() as number);
     const params = (msg.pop() as any[]);
     const method = (msg.pop() as string);
     const msgid = (msg.pop() as number);
-    return [type, msgid, method, params];
+    return { type, msgid, method, params };
 }
 
 /**
@@ -139,12 +139,11 @@ function send(this: Client, message: Message, responseListener: ResponseListener
         const encodeStream = msgpack.createEncodeStream({ codec: this.encodeCodec });
         encodeStream.pipe(socket);
         encodeStream.end(message, () => {
-            if (debug.enabled) { debug(`sent message: ${util.inspect(message, false, null, true)}`); }
+            debug.enabled && debug(`sent message: ${util.inspect(message, false, null, true)}`);
             writeFinishListener();
         });
         socket.end();
     });
-    debug({ socket });
 
     const socketEvents = ['connect', 'end', 'timeout', 'drain', 'error', 'close'];
     socketEvents.reduce((accumulator, eventName) => accumulator.on(eventName, (...args) => {
@@ -153,13 +152,13 @@ function send(this: Client, message: Message, responseListener: ResponseListener
     }), socket);
 
     socket.pipe(msgpack.createDecodeStream({ codec: this.decodeCodec })).on('data', response => {
-        if (debug.enabled) { debug(`received message: ${util.inspect(response, false, null, true)}`); }
-
+        debug.enabled && debug(`received message from server: ${util.inspect(response, false, null, true)}`);
         const [type, msgid, error, result] = (response as any); // Response message
-        assert.equal(type, 1);
-        assert.equal(msgid, message[1]);
+        debug.enabled && assert.deepEqual({ type, msgid }, { type: 1, msgid: parseMessage(message).msgid });
         responseListener(error, result, msgid);
     });
+
+    debug.enabled && debug(util.inspect(socket, false, 0));
 }
 
 /**
@@ -192,8 +191,8 @@ export function createServer(options?: { allowHalfOpen?: boolean, pauseOnConnect
     const decodeCodec = msgpack.createCodec((codecOptions || {}).decode);
     const connectionListener = function onConnection(this: net.Server, socket: net.Socket) {
         socket.pipe(msgpack.createDecodeStream({ codec: decodeCodec })).on('data', (message: Message) => {
-            debug(message);
-            const [type, msgid, method, params] = parseMessage(message);
+            debug.enabled && debug(`received message from client: ${util.inspect(message, false, null, true)}`);
+            const { type, msgid, method, params } = parseMessage(message);
             const callback = type === 2 ? undefined : (error: string, result: any) => {
                 const encodeStream = msgpack.createEncodeStream({ codec: encodeCodec });
                 encodeStream.pipe(socket);
