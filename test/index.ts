@@ -27,7 +27,7 @@ describe('msgpack-rpc#request', () => {
             server.listen(port);
 
             const client = new rpc.Client({ port });
-            return client.request('foo', 1, 2, 3);
+            return client.call('foo', 1, 2, 3);
         }).then(([response]) => {
             expect(response).to.have.ordered.members(['bar']);
             done();
@@ -54,6 +54,23 @@ describe('msgpack-rpc#request', () => {
             expect(response).to.have.ordered.members([0]);
             done();
         }).catch(done);
+    });
+
+    it('should be error when call unimplemented method', done => {
+        portfinder.getPortPromise(options).then(port => {
+            debug({ port });
+
+            server = rpc.createServer().on('foo', (params, callback) => {
+                expect(params).to.be.a('array').and.to.have.property('length', 0);
+                callback(null, params.length);
+            });
+            server.listen(port);
+
+            return rpc.createClient(port).request('bar', 1, 2, 3);
+        }).then(done).catch(error => {
+            expect(error).to.equal('Not Implemented');
+            done();
+        });
     });
 
 });

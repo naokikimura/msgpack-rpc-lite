@@ -38,7 +38,10 @@ const msgidGenerator = (() => {
     return { next() { return (msgid = (msgid < MAX ? msgid + 1 : 0)); } };
 })();
 
-type Message = [number, number, string, any[]] | [number, string, any[]];
+type RequestMessage = [0, number, string, any[]];
+type ResponseMessage = [1, number, string, any];
+type NotifyMessage = [2, string, any[]];
+type Message = RequestMessage | ResponseMessage | NotifyMessage;
 type ResponseListener = (error: string, result: any, msgid: number) => void;
 type WriteFinishListener = () => void;
 type SendListener = ResponseListener | WriteFinishListener;
@@ -58,6 +61,13 @@ function parseMessage(message: Message) {
     const method = (msg.pop() as string);
     const msgid = (msg.pop() as number);
     return { type, msgid, method, params };
+}
+
+function writeMessage(socket: net.Socket, message: Message, option?: msgpack.EncoderOptions, listener?: () => void): void {
+    const encodeStream = msgpack.createEncodeStream(option);
+    encodeStream.pipe(socket);
+    encodeStream.end(message);
+    encodeStream.unpipe(socket);
 }
 
 /**
@@ -108,7 +118,7 @@ export class Client extends events.EventEmitter {
      * @returns {Promise<[any, number]> | undefined}
      */
     public call(method: string, ...args: any[]): Promise<[any, number]> | undefined {
-        return this.request.apply(this, [method, args]);
+        return this.request.apply(this, [method, ...args]);
     }
 
     /**
@@ -194,11 +204,14 @@ export function createServer(options?: { allowHalfOpen?: boolean, pauseOnConnect
             debug.enabled && debug(`received message from client: ${util.inspect(message, false, null, true)}`);
             const { type, msgid, method, params } = parseMessage(message);
             const callback = type === 2 ? undefined : (error: string, result: any) => {
-                const encodeStream = msgpack.createEncodeStream({ codec: encodeCodec });
-                encodeStream.pipe(socket);
-                encodeStream.end([1, msgid, error, [].concat(result)]); // Response message
+                const response: Message = [1, msgid, error, [].concat(result)]; // Response message
+                writeMessage(socket, response, { codec: encodeCodec });
             };
-            this.emit(method, params, callback);
+            if (this.eventNames().indexOf(method) > -1) {
+                this.emit(method, params, callback);
+            } else {
+                writeMessage(socket, [1, msgid, 'Not Implemented', null], { codec: encodeCodec });
+            }
         });
     };
     return net.createServer(options, connectionListener);
