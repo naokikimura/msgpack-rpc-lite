@@ -29,7 +29,7 @@ describe('msgpack-rpc#request', () => {
             const client = new rpc.Client({ port });
             return client.call('foo', 1, 2, 3);
         }).then(([response]) => {
-            expect(response).to.have.ordered.members(['bar']);
+            expect(response).to.equal('bar');
             done();
         }).catch(done);
     });
@@ -51,7 +51,7 @@ describe('msgpack-rpc#request', () => {
                 });
             });
         }).then(([response]) => {
-            expect(response).to.have.ordered.members([0]);
+            expect(response).to.equal(0);
             done();
         }).catch(done);
     });
