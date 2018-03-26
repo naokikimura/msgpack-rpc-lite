@@ -73,6 +73,23 @@ describe('msgpack-rpc#request', () => {
         });
     });
 
+    it('should be error', done => {
+        portfinder.getPortPromise(options).then(port => {
+            debug({ port });
+
+            server = rpc.createServer().on('foo', (params, callback) => {
+                callback(new Error('error'));
+            });
+            server.listen(port);
+
+            const client = new rpc.Client({ port });
+            return client.call('foo', 1, 2, 3);
+        }).then(done).catch(error => {
+            expect(error).to.equal('error');
+            done();
+        });
+    });
+
 });
 
 describe('msgpack-rpc#notify', () => {
