@@ -21,9 +21,9 @@ interface DebugLog extends Function {
 
 const debug = (util.debuglog('msgpack-rpc-lite') as DebugLog);
 const tr = (object: any) => object && object.toString().replace(/\s/g, '');
-const equalsIgnoreSpace = (a: any, b: any): boolean => tr(a) === tr(b);
-// tslint:disable-next-line:only-arrow-functions no-empty
-const isDoNothingFunction = (fn: DebugLog) => equalsIgnoreSpace(fn, function () { });
+const equalsIgnoreSpace = (lhs: any, rhs: any): boolean => tr(lhs) === tr(rhs);
+// tslint:disable-next-line:only-arrow-functions no-empty ban-types
+const isDoNothingFunction = (fn: Function) => equalsIgnoreSpace(fn, function () { });
 const enabled = !isDoNothingFunction(debug);
 Object.defineProperty(debug, 'enabled', { get() { return enabled; } });
 
@@ -42,14 +42,16 @@ type RequestMessage = [0, number, string, any[]];
 type ResponseMessage = [1, number, string, any];
 type NotifyMessage = [2, string, any[]];
 type Message = RequestMessage | ResponseMessage | NotifyMessage;
-type ResponseListener = (error: string, result: any, msgid: number) => void;
+type ResponseListener = (error: string | null, result: any, msgid: number) => void;
 type WriteFinishListener = () => void;
 type SendListener = ResponseListener | WriteFinishListener;
 const isFunction = (object: any) => typeof object === 'function';
+const last = (array: any[]) => array[array.length - 1];
+const popUnless = (array: any[], predicate: (object: any) => boolean) => predicate(last(array)) ? array.pop() : undefined;
 
-function createMessage(type: number, method: string, parameters: any[]): [Message, boolean | SendListener] {
+function createMessage(type: 0 | 2, method: string, parameters: any[]): [Message, SendListener] {
     const params = parameters.slice(0);
-    const callback = isFunction(params[params.length - 1]) && (params.pop() as SendListener);
+    const callback: SendListener = popUnless(params, isFunction);
     const message = (([] as any[]).concat(type, type === 0 ? msgidGenerator.next() : [], method, [params]) as Message);
     return [message, callback];
 }
@@ -70,11 +72,10 @@ function parseMessage(message: Message) {
     };
 }
 
-function writeMessage(socket: net.Socket, message: Message, option?: msgpack.EncoderOptions, listener?: () => void): void {
+function writeMessage(socket: net.Socket, message: Message, option?: msgpack.EncoderOptions) {
     const encodeStream = msgpack.createEncodeStream(option);
     encodeStream.pipe(socket);
-    encodeStream.end(message, listener);
-    encodeStream.unpipe(socket);
+    return new Promise(resolve => encodeStream.end(message, resolve)).then(() => void (encodeStream.unpipe(socket)));
 }
 
 /**
@@ -104,15 +105,16 @@ export class Client extends events.EventEmitter {
      * @param parameters
      */
     public request(method: string, ...parameters: any[]) {
-        const [message, callback] = createMessage(0, method, parameters);
+        const [message, callback] = (createMessage(0, method, parameters) as [Message, ResponseListener]);
         if (callback) {
-            send.call(this, message, callback, undefined);
+            send(this, message, callback);
         } else {
-            return new Promise<[any, number]>((resolve, reject) => {
-                const executor = (error: string, result: any, msgid: number) =>
-                    error ? reject(error) : resolve([result, msgid]);
-                send.call(this, message, executor, undefined);
-            });
+            const executor = (resolve: (response: [any, number]) => void, reject: (error: string) => void) => {
+                const listener = (error: string | null, ...response: any[]) =>
+                    error ? reject(error) : resolve((response as [any, number]));
+                send(this, message, listener);
+            };
+            return new Promise<[any, number]>(executor);
         }
     }
 
@@ -125,7 +127,7 @@ export class Client extends events.EventEmitter {
      * @returns {Promise<[any, number]> | undefined}
      */
     public call(method: string, ...args: any[]): Promise<[any, number]> | undefined {
-        return this.request.apply(this, [method, ...args]);
+        return this.request(method, ...args);
     }
 
     /**
@@ -135,11 +137,11 @@ export class Client extends events.EventEmitter {
      * @param parameters
      */
     public notify(method: string, ...parameters: any[]) {
-        const [message, callback] = createMessage(2, method, parameters);
+        const [message, callback] = (createMessage(2, method, parameters) as [Message, WriteFinishListener]);
         if (callback) {
-            send.call(this, message, undefined, callback);
+            send(this, message, undefined, callback);
         } else {
-            return new Promise(resolve => send.call(this, message, undefined, () => resolve()));
+            return new Promise(resolve => send(this, message, undefined, () => resolve()));
         }
     }
 
@@ -151,24 +153,24 @@ export class Client extends events.EventEmitter {
 }
 
 // tslint:disable-next-line:no-empty max-line-length
-function send(this: Client, message: Message, responseListener: ResponseListener = () => { }, writeFinishListener: WriteFinishListener = () => { }) {
-    const socket = net.createConnection(this.connectOptions, () => {
-        writeMessage(socket, message, { codec: this.encodeCodec }, () => {
+function send(clinet: Client, message: Message, responseListener: ResponseListener = () => { }, writeFinishListener: WriteFinishListener = () => { }) {
+    const socket = net.createConnection(clinet.connectOptions, () => {
+        writeMessage(socket, message, { codec: clinet.encodeCodec }).then(() => {
             debug.enabled && debug(`sent message: ${util.inspect(message, false, null, true)}`);
             writeFinishListener();
+            socket.end();
         });
-        socket.end();
     });
 
     const socketEvents = ['connect', 'end', 'timeout', 'drain', 'error', 'close'];
     socketEvents.reduce((accumulator, eventName) => accumulator.on(eventName, (...args) => {
         debug(`socket event [${eventName}]`);
-        this.emit.apply(this, [eventName].concat(args));
+        clinet.emit(eventName, ...args);
     }), socket);
 
-    socket.pipe(msgpack.createDecodeStream({ codec: this.decodeCodec })).on('data', response => {
+    socket.pipe(msgpack.createDecodeStream({ codec: clinet.decodeCodec })).on('data', response => {
         debug.enabled && debug(`received message from server: ${util.inspect(response, false, null, true)}`);
-        const [type, msgid, error, result] = (response as any); // Response message
+        const { type, msgid, error = null, result } = parseMessage(response as any); // Response message
         debug.enabled && assert.deepEqual({ type, msgid }, { type: 1, msgid: parseMessage(message).msgid });
         responseListener(error, result, msgid);
     });
