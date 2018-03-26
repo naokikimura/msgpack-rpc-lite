@@ -55,6 +55,9 @@ function createMessage(type: 0 | 2, method: string, parameters: any[]): [Message
     const message = (([] as any[]).concat(type, type === 0 ? msgidGenerator.next() : [], method, [params]) as Message);
     return [message, callback];
 }
+function createResponseMessage(type: 1, msgid: number, error: string | Error, result: any): ResponseMessage {
+    return [type, msgid, util.isError(error) ? error.message : error, result];
+}
 
 function parseMessage(message: Message) {
     const msg = message.slice(0);
@@ -211,7 +214,7 @@ export function createServer(options?: { allowHalfOpen?: boolean, pauseOnConnect
             debug.enabled && debug(`received message from client: ${util.inspect(message, false, null, true)}`);
             const { type, msgid, method = '', params } = parseMessage(message);
             const callback = type === 2 ? undefined : (error: string, result: any) => {
-                const response: Message = [1, msgid, error, result]; // Response message
+                const response: Message = createResponseMessage(1, msgid, error, result); // Response message
                 writeMessage(socket, response, { codec: encodeCodec });
             };
             if (this.eventNames().indexOf(method) > -1) {
