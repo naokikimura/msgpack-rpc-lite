@@ -30,7 +30,7 @@ describe('msgpack-rpc#request', () => {
 
             client = new rpc.Client({ port });
             return Promise.all(Array.apply(null, { length: 100 }).map(() => client.call('foo', 1, 2, 3)));
-        }).then((results) => {
+        }).then(results => {
             results.forEach(([response]) => expect(response).to.equal('bar'));
             done();
         }).catch(done);
