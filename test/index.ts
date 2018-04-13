@@ -10,8 +10,10 @@ describe('msgpack-rpc#request', () => {
 
     const options = { port: Number(process.env.npm_package_config_test_port || 9199) };
     let server: net.Server;
+    let client: rpc.Client;
 
     afterEach(done => {
+        client && client.close();
         server && server.close();
         done();
     });
@@ -26,10 +28,10 @@ describe('msgpack-rpc#request', () => {
             });
             server.listen(port);
 
-            const client = new rpc.Client({ port });
-            return client.call('foo', 1, 2, 3);
-        }).then(([response]) => {
-            expect(response).to.equal('bar');
+            client = new rpc.Client({ port });
+            return Promise.all(Array.apply(null, { length: 100 }).map(() => client.call('foo', 1, 2, 3)));
+        }).then((results) => {
+            results.forEach(([response]) => expect(response).to.equal('bar'));
             done();
         }).catch(done);
     });
@@ -44,7 +46,7 @@ describe('msgpack-rpc#request', () => {
             });
             server.listen(port);
 
-            const client = rpc.createClient(port);
+            client = rpc.createClient(port);
             return new Promise<[any, number]>((resolve, reject) => {
                 client.request('foo', (error: string, response: any, msgid: number) => {
                     if (error) { reject(error); } else { resolve([response, msgid]); }
@@ -66,7 +68,8 @@ describe('msgpack-rpc#request', () => {
             });
             server.listen(port);
 
-            return rpc.createClient(port).request('bar', 1, 2, 3);
+            client = rpc.createClient(port);
+            return client.request('bar', 1, 2, 3);
         }).then(done).catch(error => {
             expect(error).to.equal('Not Implemented');
             done();
@@ -82,7 +85,7 @@ describe('msgpack-rpc#request', () => {
             });
             server.listen(port);
 
-            const client = new rpc.Client({ port });
+            client = new rpc.Client({ port });
             return client.call('foo', 1, 2, 3);
         }).then(done).catch(error => {
             expect(error).to.equal('error');
@@ -96,8 +99,10 @@ describe('msgpack-rpc#notify', () => {
 
     const options = { port: Number(process.env.npm_package_config_test_port || 9199) };
     let server: net.Server;
+    let client: rpc.Client;
 
     afterEach(done => {
+        client && client.close();
         server && server.close();
         done();
     });
@@ -112,7 +117,7 @@ describe('msgpack-rpc#notify', () => {
             });
             server.listen(port);
 
-            const client = rpc.createClient(port);
+            client = rpc.createClient(port);
             client.notify('qux', 1, 2, 3);
         }).catch(done);
     });
