@@ -39,19 +39,19 @@ const msgidGenerator = (() => {
 })();
 
 interface MessageObject {
-    error?: string,
-    method?: string,
-    msgid?: number,
-    params?: any[],
-    result?: any,
-    type: number,
+    error?: string;
+    method?: string;
+    msgid?: number;
+    params?: any[];
+    result?: any;
+    type: number;
 }
 type RequestMessage = [0, number, string, any[]];
 type ResponseMessage = [1, number, string, any];
 type NotifyMessage = [2, string, any[]];
 type Message = RequestMessage | ResponseMessage | NotifyMessage;
 type ResponseListener = (error: string | null, result: any, msgid: number) => void;
-type WriteListener = (error? : Error) => void;
+type WriteListener = (error?: Error) => void;
 type SendListener = ResponseListener | WriteListener;
 const isFunction = (object: any) => typeof object === 'function';
 const last = (array: any[]) => array[array.length - 1];
@@ -109,34 +109,16 @@ export class Client extends events.EventEmitter {
             this.emit(eventName, ...args);
         }), socket);
         Object.defineProperties(this, {
-            socket: {
-                get() { return socket; },
-            },
             decodeCodec: {
                 get() { return decodeCodec; },
             },
             encodeCodec: {
                 get() { return encodeCodec; },
             },
+            socket: {
+                get() { return socket; },
+            },
         });
-    }
-    private get socket(): net.Socket { return this.socket; }
-    private get decodeCodec(): msgpack.Codec { return this.decodeCodec; }
-    private get encodeCodec(): msgpack.Codec { return this.encodeCodec; }
-
-    // tslint:disable-next-line:no-empty max-line-length
-    private send(message: Message, responseListener: ResponseListener = () => { }, writeListener: WriteListener = () => { }) {
-        writeMessage(this.socket, message, { codec: this.encodeCodec }).then(() => {
-            debug.enabled && debug(`sent message: ${util.inspect(message, false, null, true)}`);
-            writeListener();
-        }).catch(writeListener);
-
-        const request = parseMessage(message);
-        if (request.msgid !== undefined) {
-            this.once('data:' + request.msgid, (response: MessageObject) => {
-                responseListener(response.error || null, response.result, response.msgid || -1);
-            });
-        }
     }
 
     /**
@@ -181,15 +163,35 @@ export class Client extends events.EventEmitter {
         if (callback) {
             this.send(message, undefined, callback);
         } else {
-            return new Promise((resolve, reject) => this.send(message, undefined, (error) => error ? reject(error) :  resolve()));
+            return new Promise((resolve, reject) =>
+                this.send(message, undefined, error => error ? reject(error) : resolve()));
         }
     }
 
     /**
-     * @deprecated This method does nothing. It is left for compatibility with v0.0.2 or earlier.
+     * Close connection with server
      */
     // tslint:disable-next-line:no-empty
     public close(): void { this.socket.end(); }
+
+    private get socket(): net.Socket { return this.socket; }
+    private get decodeCodec(): msgpack.Codec { return this.decodeCodec; }
+    private get encodeCodec(): msgpack.Codec { return this.encodeCodec; }
+
+    // tslint:disable-next-line:no-empty max-line-length
+    private send(message: Message, responseListener: ResponseListener = () => { }, writeListener: WriteListener = () => { }) {
+        writeMessage(this.socket, message, { codec: this.encodeCodec }).then(() => {
+            debug.enabled && debug(`sent message: ${util.inspect(message, false, null, true)}`);
+            writeListener();
+        }).catch(writeListener);
+
+        const request = parseMessage(message);
+        if (request.msgid !== undefined) {
+            this.once('data:' + request.msgid, (response: MessageObject) => {
+                responseListener(response.error || null, response.result, response.msgid || -1);
+            });
+        }
+    }
 }
 
 /**
