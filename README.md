@@ -6,6 +6,7 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Coverage/5a32022009694006ab61191e243e569f)](https://www.codacy.com/app/n.kimura.cap/msgpack-rpc-lite?utm_source=github.com&utm_medium=referral&utm_content=naokikimura/msgpack-rpc-lite&utm_campaign=Badge_Coverage)
 [![codecov](https://codecov.io/gh/naokikimura/msgpack-rpc-lite/branch/master/graph/badge.svg)](https://codecov.io/gh/naokikimura/msgpack-rpc-lite)
 [![Dependency Status](https://beta.gemnasium.com/badges/github.com/naokikimura/msgpack-rpc-lite.svg)](https://beta.gemnasium.com/projects/github.com/naokikimura/msgpack-rpc-lite)
+[![Known Vulnerabilities](https://snyk.io/test/github/naokikimura/msgpack-rpc-lite/badge.svg?targetFile=package.json)](https://snyk.io/test/github/naokikimura/msgpack-rpc-lite?targetFile=package.json)
 
 Implementation of MessagePack-RPC with msgpack-lite
 
